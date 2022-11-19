@@ -16,6 +16,8 @@ import venv
 from pathlib import Path
 
 AKI_HOME = Path(os.environ.get('HOME')) / '.aki'
+AKI_VERSION = '0.10.0'
+GITHUB_URL = f'https://github.com/4sh/aki/releases/download/{AKI_VERSION}/aki-{AKI_VERSION}.tar.gz'
 AKI_PYTHON_MIN_REQUIREMENT = (3, 8, 0)
 POST_INSTALL_MESSAGE = """You can test that everything is set up by executing:
 `aki --help`
@@ -95,7 +97,7 @@ class AkiInstaller:
         self._run_pip('install', '--disable-pip-version-check', '--upgrade', 'pip')
 
     def _install_aki(self):
-        self._run_pip('install', 'https://github.com/4sh/aki/releases/download/0.10.0/aki-0.10.0.tar.gz')
+        self._run_pip('install', GITHUB_URL)
 
     def _create_symlink(self):
         if not self.symlink_bin.exists():
