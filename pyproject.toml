@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "aki"
+version = "0.10.0"
+description = ""
+authors = ["nroulon <nicolas.roulon@4sh.fr>"]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<4"
+docker = "^6.0.1"
+python-dotenv = "^0.21.0"
+PyYAML = "^6.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.2.0"
+yapf = "^0.32.0"
+tox = "^3.27.1"
+coverage = "^6.5.0"
+
+[tool.poetry.scripts]
+aki = "aki.cli:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,27 @@
+aki:
+  volumes:
+    mongo:
+      type: host
+      container_name: aki_sample_mongo
+      env: AKI_SAMPLE_MONGO_VOLUME_NAME
+      folder: ./mongo
+      exclude:
+        - share
+    postgres:
+      type: docker
+      container_name: aki_sample_postgres
+      env: AKI_SAMPLE_POSTGRES_VOLUME_NAME
+      prefix: aki_sample_postgres_
+      exclude:
+        - share
+  use:
+    not_found:
+      - regex: dev-.*
+        actions:
+        - action: copy
+          source: dev
+      - actions:
+        - action: use
+          volume: dev
+        - action: error
+          message: Volume not found, use volume 'dev' instead

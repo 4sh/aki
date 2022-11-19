@@ -1,0 +1,21 @@
+name: aki_sample
+services:
+  mongo:
+    image: mongo
+    container_name: aki_sample_mongo
+    volumes:
+      - ./mongo/${AKI_SAMPLE_MONGO_VOLUME_NAME:-db}:/data/db
+  postgres:
+    image: postgres
+    container_name: aki_sample_postgres
+    environment:
+      POSTGRES_DB: aki
+      POSTGRES_USER: aki
+      POSTGRES_PASSWORD: aki
+    volumes:
+      - postgres_volume:/var/lib/postgresql/data
+
+volumes:
+  postgres_volume:
+    name:  aki_sample_postgres_${AKI_SAMPLE_POSTGRES_VOLUME_NAME:-db}
+    driver: local

@@ -1,0 +1,14 @@
+.coverage
+.git
+.gitignore
+.idea
+.pytest_cache
+.python-version
+.tox
+README.md
+dist
+docker-build.sh
+install-aki.py
+sample
+tests
+tox.ini

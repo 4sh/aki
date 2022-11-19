@@ -1,0 +1,10 @@
+.idea
+.venv
+**/__pycache__
+
+sample/mongo/*
+sample/.env
+
+.tox
+.pytest_cache
+dist
