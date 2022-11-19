@@ -1,14 +1,14 @@
 # AKI
 ## Description
-You switch to a branch and your app is now down because your database has data of another branch ? If your project 
+You have switched to a branch and your app is now down because your database has data of another branch ? If your project 
 use docker compose, aki can help you by managing volume and mount the correct volume on your container.
 
-Aki can list, switch, copy and remove all your project volumes. Aki is a simple script that manage volumes by modifying
-docker compose variable for switch volume.
+Aki can list, switch, copy and remove all volume link to your project. Aki is a simple script that manage volumes by 
+modifying docker compose variable for switch volume.
 
 ## Installation
 ### Docker
-You can use the docker image of `aki`: TODO
+An image `ghcr.io/4sh/aki:latest` is available.
 
 The only requirement is access to your docker daemon, for that you need to mount `/var/run/docker.sock` in the 
 container. You also need to mount the docker-compose folder with the same path as your system, 
@@ -18,20 +18,17 @@ the container.
 ```
 docker run --rm --interactive \
     --volume /var/run/docker.sock:/var/run/docker.sock \
-    --volume /path/to/aki:/path/to/aki aki:0.10
+    --volume /path/to/aki:/path/to/aki ghcr.io/4sh/aki:latest
 ```
 
 ### Python
-You can use the python version, the requirements:
-* Python 3.8+
-* docker daemon
-* docker compose cli
+A python package is also available, aki is compatible and tested with Python 3.8, 3.9, 3.10 and 3.11.
 
 You can install aki with this command:
 ```
-curl TODO | python -
+curl -sS https://raw.githubusercontent.com/4sh/aki/master/install-aki.py | python -
 ```
-where `python` is a python 3.8+, on your system the alias might be `python3`.
+where `python` is a compatible python, on your system the alias might be `python3`.
 
 The script take one argument:
 
@@ -41,7 +38,7 @@ The script take one argument:
 
 You can pass arguments after the `-`, like this :
 ```
-curl TODO | python - --home /aki
+curl -sS https://raw.githubusercontent.com/4sh/aki/master/install-aki.py | python - --home /aki
 ```
 
 The installation script create a folder `.aki` in your home, install the script in a venv and create a symlink.
@@ -77,6 +74,27 @@ If the volume size is tiny(< 1G) then it might be okay to use the docker version
 consider a switch to the "in docker" volume.
 
 ## Usage
+```shell
+aki --help
+usage: aki [-h] [--volume VOLUME] [--file FILE] [--verbose] {ls,use,cp,rm,version} ...
+
+positional arguments:
+  {ls,use,cp,rm,version}
+                        actions
+    ls                  list existing volumes. Volume used are print in red.
+    use                 restart containers with the volume pass in parameter
+    cp                  copy volume source to dest
+    rm                  remove volume
+    version             print aki version
+
+options:
+  -h, --help            show this help message and exit
+  --volume VOLUME, -v VOLUME
+                        filter volumes
+  --file FILE, -f FILE  configuration file
+  --verbose
+```
+
 ### ls
 `aki ls` print volume link to your project:
 
@@ -86,7 +104,7 @@ In green aki show volume actually used by the container. Aki use two symbols:
 * ✔ mean the volume exist
 * x mean the volume does not exist
 
-You can print docker volume name or path with `-l` option:
+You can print docker volume name or path with `--long-name/-l` option:
 
 ![](docs/images/aki_ls_long.png)
 
@@ -100,10 +118,14 @@ Copy the volume from another:
 
 ![](docs/images/aki_cp.png)
 
-cp take 3 custom arguments:
-* --override-existing: if destination volume exist, remove it and launch copy
-* --switch-to-copy: restart containers with the copied volume
+cp can take 3 arguments:
+* --override-existing: if destination volume exist, remove it and then copy
+* --switch-to-copy: after copy, switch to the volume
 * --no-switch-to-copy: do not ask if you want to switch to the volume and keep the actual one
+
+A special variable `_current` allow you to copy your current volume:
+
+![](docs/images/aki_cp_current.png)
 
 ### rm
 remove one or more volumes:
@@ -217,7 +239,7 @@ will manage, your docker-compose file location, … (see sample)
 | aki.use.not_found.actions         | array of actions (see below)                                                                                 |                           |                                                             |
 
 #### Actions
-Actions are an object that trigger aki command. There is 5 types (type `action`) :
+Actions are an object that trigger aki command. There is 5 types (attribute `action`) :
 * copy: copy the volume to the non-existent volume and switch on it
 * use: switch to the volume over the non-existent volume
 * remove: remove a volume
@@ -231,7 +253,7 @@ cp only take a source param that will be use for copy to the non-existent volume
   source: dev
 ```
 
-On py action you must pass the `destination` attribute which is the volume name.
+On py action you must pass the `destination` attribute.
 
 ##### use
 use take the volume attribute, it's the volume name to switch:
@@ -257,29 +279,30 @@ error take an optional message to print. Throw an error force aki to exit with a
 ```
 
 ##### py
-py is an action that execute python code for fetch actions. It's useful for create action that could not be represent
+py is an action that execute python code for fetch actions. It's useful for create action that could not be represented
 in a yaml file.
 
 py take:
 * `file`: path to python file to execute
 * `function`: function name to execute
 
-aki will pass 3 parameters to the functions:
-* volume name (non-existant)
-* existing volumes: a dict of existing volumes by volume type
-* used volumes: a dict volume actually use by the container
+aki will pass 3 parameters to the function:
+* volume_name (non-existent)
+* volumes_by_types (Dict[str, List[Volume]]): a dict of existing volumes by volume type
+* volumes_used (Dict[str, Volume]): a dict volume actually used by the container
 
 This function must return an action or an array of action on the dictionary form.
 
+E.g:
 ```yaml
 - action: py
   file: /path/to/file.py
   function: not_found
 ```
 
-This will execute not_found fn:
+This will execute `not_found` fn:
 ```python
-def not_found(volume_name: str, volumes_by_types: Dict[str, List[Volume]], volumes_used: Dict[str, Volume]) ->:
+def not_found(volume_name: str, volumes_by_types: Dict, volumes_used: Dict) -> Dict:
     if 'dev' in volume_name:
         return {'action': 'copy', 'source': 'dev', 'destination': volume_name}
     else:

@@ -95,9 +95,7 @@ class AkiInstaller:
         self._run_pip('install', '--disable-pip-version-check', '--upgrade', 'pip')
 
     def _install_aki(self):
-        # TODO use github link or python repository instead +git
-        dev_package = str(Path('/Users/nroulon/dev/wkspace/aki/dist/').glob('aki-*.tar.gz').__next__())
-        self._run_pip('install', dev_package)
+        self._run_pip('install', 'https://github.com/4sh/aki/releases/download/0.10.0/aki-0.10.0.tar.gz')
 
     def _create_symlink(self):
         if not self.symlink_bin.exists():
