@@ -2,6 +2,7 @@ import abc
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
+from sys import platform
 from typing import List, Iterator
 
 import docker.errors
@@ -187,8 +188,19 @@ class AkiHostVolume(AkiVolume):
         if destination_path.exists():
             destination_path.rmdir()
 
-        print_info(f'Copying {source.external_name} to {destination.external_name}')
-        shutil.copytree(source.external_name, destination.external_name)
+        if platform == "linux" or platform == "linux2":
+            print_verbose('copy on linux - start a container')
+            self.docker_client.containers.run('busybox',
+                                              command='cp -R /source/ /destination',
+                                              volumes=[
+                                                  f'{source.external_name}:/source',
+                                                  f'{destination.external_name}:/destination'
+                                              ],
+                                              remove=True)
+        else:
+            print_verbose('copy with sh')
+            shutil.copytree(source.external_name, destination.external_name)
+
 
     def remove(self, volume: Volume):
         try:
