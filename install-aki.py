@@ -16,7 +16,7 @@ import venv
 from pathlib import Path
 
 AKI_HOME = Path(os.environ.get('HOME')) / '.aki'
-AKI_VERSION = '0.10.0'
+AKI_VERSION = '0.10.1'
 GITHUB_URL = f'https://github.com/4sh/aki/releases/download/{AKI_VERSION}/aki-{AKI_VERSION}.tar.gz'
 AKI_PYTHON_MIN_REQUIREMENT = (3, 8, 0)
 POST_INSTALL_MESSAGE = """You can test that everything is set up by executing:
