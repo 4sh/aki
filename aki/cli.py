@@ -142,8 +142,10 @@ def _docker_compose_up():
     docker sdk does not support docker compose. Use subprocess module instead
     """
     print_info('Restarting containers')
+    docker_command = ['docker-compose'] if config.docker_compose_cli_version == '1' else ['docker', 'compose']
+
     cmd = [
-        *('docker-compose' if config.docker_compose_cli_version == '1' else 'docker', 'compose'),
+        *docker_command,
         '--env-file', str(config.docker_env),
         *reduce(lambda f, f2: f+f2, [('--file', str(compose)) for compose in config.docker_compose]),
         'up', '--detach'
