@@ -191,7 +191,7 @@ class AkiHostVolume(AkiVolume):
         if platform == "linux" or platform == "linux2":
             print_verbose('copy on linux - start a container')
             self.docker_client.containers.run('busybox',
-                                              command='cp -R /source/ /destination',
+                                              command='cp -R /source/. /destination',
                                               volumes=[
                                                   f'{source.external_name}:/source',
                                                   f'{destination.external_name}:/destination'
