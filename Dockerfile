@@ -1,45 +1,39 @@
 # Dockerfile
 # From https://github.com/michaeloliverx/python-poetry-docker-example/blob/master/docker/Dockerfile
+# and https://python-poetry.org/docs/faq#poetry-busts-my-docker-cache-because-it-requires-me-to-copy-my-source-files-in-before-installing-3rd-party-dependencies
 
-# Creating a python base with shared environment variables
-FROM python:3.11-alpine as python-base
+# builder-base is used to build dependencies
+FROM python:3.12-alpine as builder-base
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100 \
-    POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
-    POETRY_NO_INTERACTION=1 \
-    PYSETUP_PATH="/opt/pysetup" \
-    VENV_PATH="/opt/pysetup/.venv"
+    POETRY_NO_INTERACTION=1
 
-ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
-
-
-# builder-base is used to build dependencies
-FROM python-base as builder-base
 RUN apk add curl build-base libffi-dev
 
-# Install Poetry - respects $POETRY_VERSION & $POETRY_HOME
-ENV POETRY_VERSION=1.2.2
-RUN curl -sSL https://install.python-poetry.org | python - --version $POETRY_VERSION
+WORKDIR /app
 
-# We copy our Python requirements here to cache them
-# and install only runtime deps using poetry
-WORKDIR $PYSETUP_PATH
-COPY ./poetry.lock ./pyproject.toml ./
-RUN poetry install --no-dev
+# Copy python requirements ans install requirements
+COPY pyproject.toml poetry.lock .
+RUN pip install poetry && poetry install --only main --no-root --no-directory
+
+# Copy project and reinstall
+COPY aki/ ./aki
+RUN poetry install --only main
+
+# Remove older files
+RUN rm pyproject.toml poetry.lock
 
 
-# 'production' stage uses the clean 'python-base' stage and copyies
-# in only our runtime deps that were installed in the 'builder-base'
-FROM python-base as production
+FROM python:3.12-alpine as production
 
+# Install aki dependencies
 RUN apk add --no-cache docker-cli-compose
 
-COPY --from=builder-base $VENV_PATH $VENV_PATH
-COPY ./aki $VENV_PATH/lib/python3.11/site-packages/aki
+COPY --from=builder-base /app /app
 
-ENTRYPOINT $VENV_PATH/lib/python3.11/site-packages/aki/cli.py $0 $@
+ENTRYPOINT /app/.venv/bin/aki $0 $@
 CMD ["--help"]
