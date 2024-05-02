@@ -2,13 +2,13 @@ import abc
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from sys import platform
 from typing import List, Iterator
 
 import docker.errors
 from docker import DockerClient
 from docker.errors import DockerException
 
+from aki import platform
 from aki._print import print_info, print_verbose, print_debug_def
 
 KEY_VOLUME_DOCKER = 'docker'
@@ -188,8 +188,8 @@ class AkiHostVolume(AkiVolume):
         if destination_path.exists():
             destination_path.rmdir()
 
-        if platform == "linux" or platform == "linux2":
         print_info(f'Copying {source.external_name} to {destination.external_name}')
+        if platform.is_linux():
             print_verbose('copy on linux - start a container')
             self.docker_client.containers.run('busybox',
                                               command='cp -a /source/. /destination',
