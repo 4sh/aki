@@ -14,7 +14,8 @@ from docker.errors import DockerException
 from aki import cli
 from aki._colorize import colorize_in_green
 
-cli_file = Path(__file__).resolve().parent.parent.parent / 'aki/cli.py'
+project_folder = Path(__file__).resolve().parent.parent.parent
+cli_file = project_folder / 'aki/cli.py'
 docker_compose_folder = Path(__file__).resolve().parent.parent / 'resources/yaml'
 aki_file = docker_compose_folder / 'aki.yaml'
 env_file = docker_compose_folder / '.env'
@@ -128,7 +129,7 @@ def test_use():
 
     _assert_process_out(out, f'''
                                  Use volume test
-                                 Writing /Users/nroulon/dev/wkspace/aki/tests/resources/yaml/.env
+                                 Writing {project_folder}/tests/resources/yaml/.env
                                  Removing container aki_test_mongo
                                  Removing container aki_test_postgres
                                  Restarting containers
@@ -144,7 +145,7 @@ def test_use_one():
 
     _assert_process_out(out, f'''
                                  Use volume test
-                                 Writing /Users/nroulon/dev/wkspace/aki/tests/resources/yaml/.env
+                                 Writing {project_folder}/tests/resources/yaml/.env
                                  Removing container aki_test_mongo
                                  Restarting containers
                                  \x1b[32mContainers started\x1b[0m''')

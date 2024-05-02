@@ -189,6 +189,7 @@ class AkiHostVolume(AkiVolume):
             destination_path.rmdir()
 
         if platform == "linux" or platform == "linux2":
+        print_info(f'Copying {source.external_name} to {destination.external_name}')
             print_verbose('copy on linux - start a container')
             self.docker_client.containers.run('busybox',
                                               command='cp -a /source/. /destination',
