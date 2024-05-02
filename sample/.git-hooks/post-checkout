@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+script_directory="$(cd "$(dirname "$(readlink -f ${BASH_SOURCE[0]})")" &> /dev/null && pwd)"
+
+if command -v aki &> /dev/null
+then
+    branch="$(git branch --show-current)"
+
+    if [ -z "$branch" ]
+    then
+        echo "branch is empty"
+    else
+        echo "Starting aki to branch '$branch'"
+        "$script_directory"/../sample-aki.sh use "$branch"
+    fi
+fi

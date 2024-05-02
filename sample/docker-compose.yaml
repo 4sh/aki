@@ -4,7 +4,7 @@ services:
     image: mongo
     container_name: aki_sample_mongo
     volumes:
-      - ./mongo/${AKI_SAMPLE_MONGO_VOLUME_NAME:-db}:/data/db
+      - ./mongo/${AKI_SAMPLE_MONGO_VOLUME_NAME:-dev}:/data/db
   postgres:
     image: postgres
     container_name: aki_sample_postgres
@@ -17,5 +17,5 @@ services:
 
 volumes:
   postgres_volume:
-    name:  aki_sample_postgres_${AKI_SAMPLE_POSTGRES_VOLUME_NAME:-db}
+    name:  aki_sample_postgres_${AKI_SAMPLE_POSTGRES_VOLUME_NAME:-dev}
     driver: local

@@ -1,17 +1,17 @@
 # AKI
 ## Description
-You have switched to a branch and your app is now down because your database has data of another branch ? If your project 
+You have switched to a branch and your app is now down because your database has data of another branch ? If your project
 use docker compose, aki can help you by managing volume and mount the correct volume on your container.
 
-Aki can list, switch, copy and remove all volume link to your project. Aki is a simple script that manage volumes by 
+Aki can list, switch, copy and remove all volume link to your project. Aki is a simple script that manage volumes by
 modifying docker compose variable for switch volume.
 
 ## Installation
 ### Docker
 An image `ghcr.io/4sh/aki:latest` is available.
 
-The only requirement is access to your docker daemon, for that you need to mount `/var/run/docker.sock` in the 
-container. You also need to mount the docker-compose folder with the same path as your system, 
+The only requirement is access to your docker daemon, for that you need to mount `/var/run/docker.sock` in the
+container. You also need to mount the docker-compose folder with the same path as your system,
 e.g. if `docker-compose.yaml` is in `/project/docker-compose.yaml` then it must be `/project/docker-compose.yaml` in
 the container.
 
@@ -22,42 +22,16 @@ docker run --rm --interactive \
 ```
 
 ### Python
-A python package is also available, aki is compatible and tested with Python 3.8, 3.9, 3.10 and 3.11.
+A python package is also available, aki is compatible and tested with Python 3.8, 3.9, 3.10, 3.11 and 3.12.
 
-You can install aki with this command:
+You can install aki with [pipx](https://pipx.pypa.io/):
 ```
-curl -sS https://raw.githubusercontent.com/4sh/aki/master/install-aki.py | python -
-```
-where `python` is a compatible python, on your system the alias might be `python3`.
-
-The script take one argument:
-
-| argument            | description                                    | default      |
-|---------------------|------------------------------------------------|--------------|
-| --home _aki_folder_ | aki installation folder                        | _$HOME_/.aki |
-
-You can pass arguments after the `-`, like this :
-```
-curl -sS https://raw.githubusercontent.com/4sh/aki/master/install-aki.py | python - --home /aki
-```
-
-The installation script create a folder `.aki` in your home, install the script in a venv and create a symlink.
-The symlink file will be in `$HOME/.local/bin/aki` if aki home is not overriden. If aki home is override, then the symlink
-will be in `$AKI_HOME/bin/aki`.
-
-Once installed, check aki is set up by executing:
-```
-aki --help
-```
-
-You may need to add the bin directory in your shell configuration file:
-```
-export PATH="$HOME/.local/bin/aki:$PATH"
+pipx install https://github.com/4sh/aki/releases/download/0.10.2/aki-0.10.2.tar.gz
 ```
 
 ### Docker or Python ?
-If you are (and your coworkers) on Linux you can use either the docker or the python version. The docker version can be 
-better as you do not have to care about python in your system, plus you can enforce `aki` version by specify precisely 
+If you are (and your coworkers) on Linux you can use either the docker or the python version. The docker version can be
+better as you do not have to care about python in your system, plus you can enforce `aki` version by specify precisely
 the image you want for you and your coworkers.
 
 On macOS, it can be a little more difficult due to how docker function.
@@ -123,20 +97,18 @@ cp can take 3 arguments:
 * --switch-to-copy: after copy, switch to the volume
 * --no-switch-to-copy: do not ask if you want to switch to the volume and keep the actual one
 
-A special variable `_current` allow you to copy your current volume:
-
-![](docs/images/aki_cp_current.png)
-
 ### rm
-remove one or more volumes:
+Remove one or more volumes:
 
 ![](docs/images/aki_rm.png)
+
+Of course current volume cannot be removed.
 
 ## Add aki to a project
 A sample is available in ./sample
 
 ### docker compose
-Before describing aki configuration, you must edit your `docker-compose` file for add variable on your volume, see 
+Before describing aki configuration, you must edit your `docker-compose` file for add variable on your volume, see
 [docker env variables documentation](https://docs.docker.com/compose/environment-variables/).
 
 #### "in docker" volume
@@ -182,7 +154,7 @@ volumes:
     driver: local
 ```
 
-The variable AKI_SAMPLE_POSTGRES_VOLUME_NAME will be replaced by aki, if your coworker does not use aki they will 
+The variable AKI_SAMPLE_POSTGRES_VOLUME_NAME will be replaced by aki, if your coworker does not use aki they will
 continue to use `aki_sample_postgres_db` volume.
 
 #### Mount folder
@@ -239,7 +211,8 @@ will manage, your docker-compose file location, … (see sample)
 | aki.use.not_found.actions         | array of actions (see below)                                                                                 |                           |                                                             |
 
 #### Actions
-Actions are an object that trigger aki command. There is 5 types (attribute `action`) :
+Actions are an object that trigger aki command, this is used for tell aki what to do when use a non-existent volume.
+There is 5 types (attribute `action`) :
 * copy: copy the volume to the non-existent volume and switch on it
 * use: switch to the volume over the non-existent volume
 * remove: remove a volume
@@ -252,8 +225,13 @@ cp only take a source param that will be use for copy to the non-existent volume
 - action: copy
   source: dev
 ```
-
 On py action you must pass the `destination` attribute.
+
+A special variable `_current` allow you to copy your current volume:
+```yaml
+- action: copy
+  source: _current
+```
 
 ##### use
 use take the volume attribute, it's the volume name to switch:
@@ -312,15 +290,13 @@ def not_found(volume_name: str, volumes_by_types: Dict, volumes_used: Dict) -> D
 ##### Example
 ```yaml
 aki:
-  
-  
   use:
     not_found:
-      - regex: dev-.*
+      - regex: ^dev-.+
         actions:
           - action: copy
             source: dev
-      - regex: pr-.*
+      - regex: ^pr-.+
         actions:
           - action: copy
             source: _current
@@ -340,11 +316,45 @@ The regex filter the action. E.g:
 A good way for use aki is to call it in a `post-checkout` hook that pass current branch name to the volume name.
 The `post-checkout` method ensure a volume switch after a checkout:
 ```shell
-#!/bin/sh
+#!/usr/bin/env bash
 
-echo "Starting aki"
-docker_folder=$(pwd)/docker-compose
-aki --file "docker-compose/aki.yml" use "$(git branch --show-current)"
+branch="$(git branch --show-current)"
+
+if [ -z "$branch" ]
+then
+    echo "branch is empty"
+else
+    echo "Starting aki to branch '$branch'"
+    aki --file "docker-compose/aki.yml" use "$(git branch --show-current)"
+fi
 ```
 
 If you go that way ensure to fill `aki.use.not_found` actions.
+The script check for empty branch has it can be trigger by docker on other action like rebase with an empty branch.
+
+## Sample
+The folder sample contain everything needed for a project :
+### docker-compose.yaml
+A simple `docker-compose.yaml` with variables for volume name. Mongo use a mount folder as a volume,
+postgres use a docker volume.
+
+### aki.yaml
+An `aki.yaml` that describe those variables to aki.
+It allow a copy to a non-existent volume if the new volume name start with `dev-`.
+
+### sample.aki.sh
+A script for use aki with sample project configuration from any directory.
+It uses `aki` command if present or fallback to `docker`, the aim is to manage a team that uses both methods.
+
+You can link this file into `~/.local/bin/`:
+```
+ln -s /path/to/sample-aki.sh ~/.local/bin/sample-aki
+```
+Then you can type `sample-aki` from any directory.
+
+### post-checkout
+A git `post-checkout` file for command aki to use current branch as a volume.
+You just need to tell git to use `.git-hooks` folder :
+```
+git config core.hooksPath .git-hooks
+```
