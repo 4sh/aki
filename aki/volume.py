@@ -9,6 +9,7 @@ from docker import DockerClient
 from docker.errors import DockerException
 
 from aki import platform
+from aki._docker_client import format_aki_container_name
 from aki._print import print_info, print_verbose, print_debug_def
 
 KEY_VOLUME_DOCKER = 'docker'
@@ -122,6 +123,7 @@ class AkiDockerVolume(AkiVolume):
 
         self.docker_client.containers.run('busybox',
                                           command='cp -a /source/ /destination',
+                                          name=format_aki_container_name(f'cp_{self.container_name}'),
                                           volumes=[
                                               f'{source.external_name}:/source',
                                               f'{destination.external_name}:/destination'
@@ -193,6 +195,7 @@ class AkiHostVolume(AkiVolume):
             print_verbose('copy on linux - start a container')
             self.docker_client.containers.run('busybox',
                                               command='cp -a /source/. /destination',
+                                              name=format_aki_container_name(f'cp_{self.container_name}'),
                                               volumes=[
                                                   f'{source.external_name}:/source',
                                                   f'{destination.external_name}:/destination'
@@ -201,7 +204,6 @@ class AkiHostVolume(AkiVolume):
         else:
             print_verbose('copy with sh')
             shutil.copytree(source.external_name, destination.external_name)
-
 
     def remove(self, volume: Volume):
         try:
