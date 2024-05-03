@@ -12,3 +12,4 @@ install-aki.py
 sample
 tests
 tox.ini
+.github

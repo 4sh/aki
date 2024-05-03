@@ -18,4 +18,4 @@ git commit --all --message "release $version"
 git tag "v$version"
 
 echo "upload $script_directory/dist/aki-$version.tar.gz to a new release $version on https://github.com/4sh/aki/releases"
-echo "push for publish docker package"
+echo "push for publish version and docker package : git push && git push --tags"
