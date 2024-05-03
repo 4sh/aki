@@ -6,7 +6,7 @@ version="$1"
 
 echo "change version in files"
 echo "__version__ = '$version'" > "$script_directory/aki/version.py"
-sed -i'.bak' -e "s@^pipx install .*@pipx install https://github.com/4sh/aki/releases/download/$version/aki-$version.tar.gz@" "README.md"
+sed -i'.bak' -e "s@^pipx install .*@pipx install https://github.com/4sh/aki/releases/download/v$version/aki-$version.tar.gz@" "README.md"
 sed -i'.bak' -e "s@^version = .*@version = \"$version\"@" "pyproject.toml"
 rm README.md.bak pyproject.toml.bak
 
