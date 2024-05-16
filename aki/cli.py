@@ -95,19 +95,31 @@ def _execute_action(action_param: Action or List[Action], volumes_spec_by_type: 
     else:
         raise ScriptError(f'object {actions} is not an action or a list of action')
 
+    def filter_type_of_volume_spec_by_type(volume_types: List[str]):
+        if volume_types is None or len(volume_types) == 0:
+            return volumes_spec_by_type
+
+        return {
+            volume_type: volumes_spec
+            for volume_type, volumes_spec in volumes_spec_by_type.items()
+            if volume_type in volume_types
+        }
+
     for action in actions:
         print_verbose(f'executing action {action}')
         if isinstance(action, CopyAction):
             print_verbose('start action copy')
-            copy_volume(volumes_spec_by_type, action.source, action.destination, action.override, action.switch_to_copy)
+            copy_volume(filter_type_of_volume_spec_by_type(action.types), action.source, action.destination,
+                        action.override, action.switch_to_copy)
             print_verbose('action copy done')
         elif isinstance(action, UseAction):
             print_verbose('start action use')
-            use_volume(volumes_spec_by_type, action.volume)
+            use_volume(filter_type_of_volume_spec_by_type(action.types), action.volume)
             print_verbose('action use done')
         elif isinstance(action, RemoveAction):
             print_verbose('start action remove')
-            remove_volume(volumes_spec_by_type, action.volumes)
+            remove_volumes_by_name_or_pattern(filter_type_of_volume_spec_by_type(action.types), action.volumes,
+                                              is_pattern=False, reverse_match=False, is_force=False)
             print_verbose('action remove done')
         elif isinstance(action, PyCodeAction):
             print_verbose('start action py')

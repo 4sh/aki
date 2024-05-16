@@ -1,5 +1,5 @@
 import abc
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -25,11 +25,13 @@ class CopyAction(Action):
     """
     KEY_SOURCE = 'source'
     KEY_DESTINATION = 'destination'
+    KEY_TYPES = 'types'
     KEY_OVERRIDE = 'override'
     KEY_SWITCH_TO_COPY = 'switch_to_copy'
 
     source: str
     destination: str
+    types: List[str] = field(default_factory=list)
     override: bool = False
     switch_to_copy: bool = None
 
@@ -37,10 +39,11 @@ class CopyAction(Action):
     def from_dict(dictionary: Dict, prefix: str = ''):
         source = dict_parse_utils.get_str(ConfigKey(CopyAction.KEY_SOURCE, prefix), dictionary)
         destination = dict_parse_utils.get_str(ConfigKey(CopyAction.KEY_DESTINATION, prefix), dictionary)
+        types = dict_parse_utils.get_list(ConfigKey(CopyAction.KEY_TYPES, prefix), dictionary, mandatory=False)
         override = dict_parse_utils.get_bool_default(ConfigKey(CopyAction.KEY_OVERRIDE, prefix), dictionary, False)
         switch_to_copy = dict_parse_utils.get_bool(ConfigKey(CopyAction.KEY_SWITCH_TO_COPY, prefix), dictionary, False)
 
-        return CopyAction(source, destination, override, switch_to_copy)
+        return CopyAction(source, destination, types, override, switch_to_copy)
 
 
 @dataclass(frozen=True)
@@ -49,13 +52,16 @@ class UseAction(Action):
     Perform a script use
     """
     KEY_VOLUME = 'volume_name'
+    KEY_TYPES = 'types'
 
     volume: str
+    types: List[str] = field(default_factory=list)
 
     @staticmethod
     def from_dict(dictionary: Dict, prefix: str = ''):
         volume = dict_parse_utils.get_str(ConfigKey(UseAction.KEY_VOLUME, prefix), dictionary)
-        return UseAction(volume)
+        types = dict_parse_utils.get_list(ConfigKey(CopyAction.KEY_TYPES, prefix), dictionary, mandatory=False)
+        return UseAction(volume, types)
 
 
 @dataclass(frozen=True)
@@ -64,13 +70,16 @@ class RemoveAction(Action):
     Remove one or a list of volumes
     """
     KEY_VOLUMES = 'volume_names'
+    KEY_TYPES = 'types'
 
     volumes: List[str]
+    types: List[str] = field(default_factory=list)
 
     @staticmethod
     def from_dict(dictionary: Dict, prefix: str = ''):
         volume_names = dict_parse_utils.get_list(ConfigKey(RemoveAction.KEY_VOLUMES, prefix), dictionary)
-        return RemoveAction(volume_names)
+        types = dict_parse_utils.get_list(ConfigKey(CopyAction.KEY_TYPES, prefix), dictionary, mandatory=False)
+        return RemoveAction(volume_names, types)
 
 
 @dataclass(frozen=True)
