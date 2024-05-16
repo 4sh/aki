@@ -9,7 +9,7 @@ import docker.errors
 from docker import DockerClient
 from docker.errors import DockerException
 
-from aki import platform
+from aki import platform_info
 from aki._docker_client import format_aki_container_name
 from aki._print import print_info, print_verbose, print_debug_def
 
@@ -219,7 +219,7 @@ class AkiHostVolume(AkiVolume):
             destination_path.rmdir()
 
         print_info(f'Copying {source.external_name} to {destination.external_name}')
-        if platform.is_linux():
+        if platform_info.is_linux():
             print_verbose('copy on linux - start a container')
             self.docker_client.containers.run('busybox',
                                               command='cp -a /source/. /destination',
