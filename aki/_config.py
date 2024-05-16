@@ -63,7 +63,7 @@ def import_config(yaml_file: Path) -> Config:
     base_path = yaml_file.parent.resolve()
     aki_volumes = _get_volumes_from_config(base_path, config, docker_client)
     docker_composes, docker_env_path, docker_compose_cli_version = _get_docker_compose_from_config(base_path, config)
-    use_not_found_action_fn = _create_use_not_found_action_fn_from_config(config)
+    use_not_found_action_fn = _create_use_not_found_action_fn_from_config(base_path, config)
 
     return Config(docker_client, base_path, aki_volumes, docker_composes, docker_env_path, docker_compose_cli_version,
                   use_not_found_action_fn)
@@ -170,7 +170,7 @@ def _fetch_default_aki_path():
     raise ScriptError(f'Cannot find aki.yaml or aki.yml file in folder {base_path}')
 
 
-def _create_use_not_found_action_fn_from_config(config):
+def _create_use_not_found_action_fn_from_config(base_path, config):
     actions_configs = dict_parse_utils.get_deep_list(KEY_USE_NOT_FOUND.path, config)
 
     def fetch_use_not_found_action(volume_name, volumes_by_type, current_volume_by_type):
@@ -194,8 +194,9 @@ def _create_use_not_found_action_fn_from_config(config):
                     action = ErrorAction.from_dict(action_config, prefix=KEY_NOT_FOUND_ACTIONS.path)
                 elif action_type == ACTION_PY:
                     action_config.setdefault(PyCodeAction.KEY_FUNCTION, 'use_not_found')
-                    action = PyCodeAction.from_dict(action_config, volume_name, volumes_by_type, current_volume_by_type,
-                                                    prefix=KEY_NOT_FOUND_ACTIONS.path)
+                    action = PyCodeAction.from_dict(action_config, volume_name, volumes_by_type,
+                                                    current_volume_by_type, prefix=KEY_NOT_FOUND_ACTIONS.path,
+                                                    base_path=base_path)
                 else:
                     raise ScriptError(f'Action \'{action_type}\' is unknown')
                 actions.append(action)

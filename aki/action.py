@@ -150,8 +150,8 @@ class PyCodeAction(Action):
         return actions
 
     @staticmethod
-    def from_dict(dictionary: Dict, *args, prefix: str = ''):
-        file = dict_parse_utils.get_path(None, ConfigKey(PyCodeAction.KEY_FILE, prefix), dictionary)
+    def from_dict(dictionary: Dict, *args, prefix: str = '', base_path: Path | None = None):
+        file = dict_parse_utils.get_path(base_path, ConfigKey(PyCodeAction.KEY_FILE, prefix), dictionary)
         if not file.exists():
             raise ScriptError(f'Action py : Path {file} does not exist')
 

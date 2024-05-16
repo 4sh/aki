@@ -187,7 +187,7 @@ def test_get_incorrect_cli_version_from_config_key_docker_compose():
 
 def test_create_use_not_found_action_fn_from_config_copy():
     actions = {'aki': {'use': {'not_found': [{'volume': '.*', 'actions': [{'action': 'copy', 'source': 'dev'}]}]}}}
-    actions = config_loader._create_use_not_found_action_fn_from_config(actions)('volume', {}, {})
+    actions = config_loader._create_use_not_found_action_fn_from_config(TEST_FOLDER, actions)('volume', {}, {})
 
     assert type(actions) == list
     assert len(actions) == 1
@@ -201,7 +201,7 @@ def test_create_use_not_found_action_fn_from_config_copy():
 
 def test_create_use_not_found_action_fn_from_config_use():
     actions = {'aki': {'use': {'not_found': [{'volume': '.*', 'actions': [{'action': 'use', 'volume_name': 'dev'}]}]}}}
-    actions = config_loader._create_use_not_found_action_fn_from_config(actions)('volume', {}, {})
+    actions = config_loader._create_use_not_found_action_fn_from_config(TEST_FOLDER, actions)('volume', {}, {})
 
     assert type(actions) == list
     assert len(actions) == 1
@@ -212,7 +212,7 @@ def test_create_use_not_found_action_fn_from_config_use():
 
 def test_create_use_not_found_action_fn_from_config_rm():
     actions = {'aki': {'use': {'not_found': [{'actions': [{'action': 'remove', 'volume_names': ['dev', 'dev-x']}]}]}}}
-    actions = config_loader._create_use_not_found_action_fn_from_config(actions)('volume', {}, {})
+    actions = config_loader._create_use_not_found_action_fn_from_config(TEST_FOLDER, actions)('volume', {}, {})
 
     assert type(actions) == list
     assert len(actions) == 1
@@ -224,7 +224,7 @@ def test_create_use_not_found_action_fn_from_config_rm():
 def test_create_use_not_found_action_fn_from_config_error():
     actions = {
         'aki': {'use': {'not_found': [{'volume_name': '.*', 'actions': [{'action': 'error', 'message': 'why ?'}]}]}}}
-    actions = config_loader._create_use_not_found_action_fn_from_config(actions)('volume', {}, {})
+    actions = config_loader._create_use_not_found_action_fn_from_config(TEST_FOLDER, actions)('volume', {}, {})
 
     assert type(actions) == list
     assert len(actions) == 1
@@ -237,7 +237,7 @@ def test_create_use_not_found_action_fn_from_config_py():
     actions = {'aki': {'use': {'not_found': [{'volume_name': '.*', 'actions': [
         {'action': 'py', 'file': str(TEST_FOLDER / 'resources/py/test_py_code.py')}
     ]}]}}}
-    actions = config_loader._create_use_not_found_action_fn_from_config(actions)('volume', {}, {})
+    actions = config_loader._create_use_not_found_action_fn_from_config(TEST_FOLDER, actions)('volume', {}, {})
 
     assert type(actions) == list
     assert len(actions) == 1
@@ -255,7 +255,7 @@ def test_create_use_not_found_action_fn_from_config_multi():
         {'volume_name': 'test+', 'actions': [{'action': 'error', 'message': 'why ?'}]},
         {'volume_name': '.*', 'actions': [{'action': 'error', 'message': 'no'}]}
     ]}}}
-    actions = config_loader._create_use_not_found_action_fn_from_config(actions)('testtest', {}, {})
+    actions = config_loader._create_use_not_found_action_fn_from_config(TEST_FOLDER, actions)('testtest', {}, {})
 
     assert type(actions) == list
     assert len(actions) == 1
