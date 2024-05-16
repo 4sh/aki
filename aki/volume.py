@@ -1,4 +1,5 @@
 import abc
+import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -40,7 +41,7 @@ class AkiVolume(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def fetch_volumes(self) -> Iterator[Volume]:
+    def fetch_volumes(self, regex_pattern: str = None, reverse_match: bool = False) -> Iterator[Volume]:
         """
         Return existing volumes
         """
@@ -70,6 +71,18 @@ class AkiVolume(metaclass=abc.ABCMeta):
         except docker.errors.NotFound:
             return False
 
+    @staticmethod
+    def is_volume_match_pattern(volume: Volume, regex_pattern: str, reverse_match: bool) -> bool:
+        if not regex_pattern:
+            return True
+
+        is_volume_match_pattern = re.search(regex_pattern, volume.aki_name)
+
+        if reverse_match:
+            is_volume_match_pattern = not is_volume_match_pattern
+
+        return is_volume_match_pattern
+
 
 @dataclass(frozen=True)
 class AkiDockerVolume(AkiVolume):
@@ -86,7 +99,7 @@ class AkiDockerVolume(AkiVolume):
 
         return Volume(name, aki_name)
 
-    def fetch_volumes(self) -> Iterator[Volume]:
+    def fetch_volumes(self, regex_pattern: str = None, reverse_match: bool = False) -> Iterator[Volume]:
         docker_filter = f'^{self.prefix_name}'
         print_verbose(f'{self.container_name} - fetch volume on docker with filter {docker_filter}')
         docker_volumes = self.docker_client.volumes.list(filters={'name': docker_filter})
@@ -94,8 +107,14 @@ class AkiDockerVolume(AkiVolume):
 
         for docker_volume in docker_volumes:
             volume = self.volume_name_to_volume(docker_volume.name)
-            if volume.aki_name not in self.exclude_names:
-                yield volume
+
+            if volume.aki_name in self.exclude_names:
+                continue
+
+            if not AkiVolume.is_volume_match_pattern(volume, regex_pattern, reverse_match):
+                continue
+
+            yield volume
 
     def fetch_current_volume(self) -> Volume or None:
         try:
@@ -153,13 +172,22 @@ class AkiHostVolume(AkiVolume):
 
         return Volume(name, aki_name)
 
-    def fetch_volumes(self) -> Iterator[Volume]:
+    def fetch_volumes(self, regex_pattern: str = None, reverse_match: bool = False) -> Iterator[Volume]:
         print_verbose(f'{self.container_name} - fetch volume on host - folder {self.parent_folder} - '
                       f'excludes {self.exclude_names}')
 
-        for volume in self.parent_folder.iterdir():
-            if volume.is_dir() and volume.name not in self.exclude_names:
-                yield self.volume_name_to_volume(str(volume))
+        for file in self.parent_folder.iterdir():
+            if not file.is_dir():
+                continue
+
+            if file.name in self.exclude_names:
+                continue
+
+            volume = self.volume_name_to_volume(str(file))
+            if not AkiVolume.is_volume_match_pattern(volume, regex_pattern, reverse_match):
+                continue
+
+            yield volume
 
     def fetch_current_volume(self) -> Volume or None:
         parent_folder = str(self.parent_folder)

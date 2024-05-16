@@ -7,7 +7,7 @@ import traceback
 from functools import reduce
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from docker.errors import DockerException
 from dotenv import dotenv_values
@@ -32,13 +32,14 @@ def _print_matrix(matrix):
     print_info('\n'.join(matrix_array))
 
 
-def _fetch_volumes_of_aki_volumes(aki_volume_by_type: Dict[str, AkiVolume]) -> Dict[str, List[Volume]]:
+def _fetch_volumes_of_aki_volumes(aki_volume_by_type: Dict[str, AkiVolume], regex_pattern: str = None,
+                                  reverse_match: bool = False) -> Dict[str, List[Volume]]:
     """
     Return volumes by aki volume type
     """
     volumes_by_aki_volume_type = {}
     for volume_type, aki_volume in aki_volume_by_type.items():
-        volumes_by_aki_volume_type[volume_type] = list(aki_volume.fetch_volumes())
+        volumes_by_aki_volume_type[volume_type] = list(aki_volume.fetch_volumes(regex_pattern, reverse_match))
 
     return volumes_by_aki_volume_type
 
@@ -165,6 +166,100 @@ def _docker_compose_up():
         raise ScriptError(process.stdout.decode("utf-8"))
 
 
+def _print_volumes_matrix(aki_volume_by_type: Dict[str, AkiVolume], volumes_to_print: Dict[str, List[Volume]],
+                          external_name: bool = False, volumes_to_decorate_by_type: Dict[str, str] = None):
+    if volumes_to_decorate_by_type is None:
+        volumes_to_decorate_by_type = {
+            volume_type: None
+            for volume_type, _ in aki_volume_by_type.items()
+        }
+
+    matrix_to_print = []
+
+    # Compute volumes in a easier collection for print
+    volumes_by_type_by_aki_name: Dict[str, Dict[str, Volume]] = {}
+    for volume_type, volumes in volumes_to_print.items():
+        for volume in volumes:
+            volumes_by_types = volumes_by_type_by_aki_name.setdefault(volume.aki_name, {})
+            volumes_by_types.setdefault(volume_type, volume)
+
+    # Calculate column size
+    aki_name_column_size = 8
+    for aki_name, _ in volumes_by_type_by_aki_name.items():
+        aki_name_column_size = max([aki_name_column_size, len(aki_name) + 2])
+
+    if external_name:
+        column_size_by_type = {}
+        for volume_type in aki_volume_by_type:
+            column_size = len(volume_type)
+            for _, volume_by_type in volumes_by_type_by_aki_name.items():
+                if volume_type in volume_by_type:
+                    column_size = max(column_size, len(volume_by_type[volume_type].external_name) + 2)
+            column_size_by_type[volume_type] = column_size
+    else:
+        column_size_by_type: Dict[str, int] = {
+            volume_type: len(volume_type) + 2
+            for volume_type in aki_volume_by_type
+        }
+
+    # Format default line template
+    default_aki_column = f'{{:<{aki_name_column_size}}}'
+    column_template = default_aki_column + ''.join([f'{{:<{column_size}}}' for column_size in column_size_by_type.values()])
+    matrix_to_print.append((column_template, (['VOLUME'] + [key.upper() for key in aki_volume_by_type.keys()])))
+
+    # Compute volumes by aki name and print a line by aki name
+    for aki_name in sorted(volumes_by_type_by_aki_name.keys(), key=str.casefold):
+        volume_by_type = volumes_by_type_by_aki_name[aki_name]
+
+        # For each type set a tuple that indicate if the volume exist and need to be print in green
+        volume_state_by_type = {}
+
+        for volumes_type, volume_spec in aki_volume_by_type.items():
+            volume_to_decorate = volumes_to_decorate_by_type[volumes_type]
+            decorate = False
+            volume = None
+
+            # Check if volume exists and check decorate
+            if volumes_type in volume_by_type:
+                volume = volume_by_type[volumes_type]
+                decorate = volume == volume_to_decorate
+
+            volume_state_by_type.setdefault(volumes_type, (volume, decorate))
+
+        # Template that define column minimum size
+        column_template = []
+        columns_values = []
+        is_line_contains_decorate_volume = False   # If true then the aki name will be colorized too
+
+        # Compute line template for aki name and print
+        for volume_type, (volume, decorate) in volume_state_by_type.items():
+            if external_name:
+                volume_to_print = volume.external_name if volume else "-"
+            else:
+                volume_to_print = "\U00002714" if volume else "x"
+
+            # Increase template size because we write unicode characters for print the volume name in another color
+            column_size = column_size_by_type[volume_type]
+            if decorate:
+                volume_to_print = colorize_in_green(volume_to_print)
+                column_size = column_size + 9
+                is_line_contains_decorate_volume = True
+
+            column_template.append(f'{{:<{column_size}}}')
+            columns_values.append(volume_to_print)
+
+        # Compute if aki name is colorized
+        if is_line_contains_decorate_volume:
+            columns_values.insert(0, colorize_in_green(aki_name))
+            column_template.insert(0, f'{{:<{aki_name_column_size + 9}}}')
+        else:
+            columns_values.insert(0, aki_name)
+            column_template.insert(0, default_aki_column)
+
+        matrix_to_print.append((column_template, columns_values))
+    _print_matrix(matrix_to_print)
+
+
 def use_volume(aki_volume_by_type: Dict[str, AkiVolume], aki_name_to_use: str):
     print_info(f'Use volume {aki_name_to_use}')
     volumes_by_type = _fetch_volumes_of_aki_volumes(aki_volume_by_type)
@@ -226,9 +321,9 @@ def use_volume(aki_volume_by_type: Dict[str, AkiVolume], aki_name_to_use: str):
     print_success(f'Containers started')
 
 
-def print_volume(aki_volume_by_type: Dict[str, AkiVolume], external_name: bool = False):
-    matrix_to_print = []
-    volumes_by_type = _fetch_volumes_of_aki_volumes(aki_volume_by_type)
+def print_volumes(aki_volume_by_type: Dict[str, AkiVolume], regex_pattern: str or None, reverse_match: bool = False,
+                  external_name: bool = False):
+    volumes_by_type = _fetch_volumes_of_aki_volumes(aki_volume_by_type, regex_pattern, reverse_match)
 
     current_volume_by_type = {
         volume_type: _fetch_current_volume(volume_spec)
@@ -237,88 +332,7 @@ def print_volume(aki_volume_by_type: Dict[str, AkiVolume], external_name: bool =
 
     print_verbose(f'current volume : {current_volume_by_type}')
 
-    # Compute volumes in a easier collection for print
-    volumes_by_type_by_aki_name: Dict[str, Dict[str, Volume]] = {}
-    for volume_type, volumes in volumes_by_type.items():
-        for volume in volumes:
-            volumes_by_types = volumes_by_type_by_aki_name.setdefault(volume.aki_name, {})
-            volumes_by_types.setdefault(volume_type, volume)
-
-    # Calculate column size
-    aki_name_column_size = 8
-    for aki_name, _ in volumes_by_type_by_aki_name.items():
-        aki_name_column_size = max([aki_name_column_size, len(aki_name) + 2])
-
-    if external_name:
-        column_size_by_type = {}
-        for volume_type in aki_volume_by_type:
-            column_size = len(volume_type)
-            for _, volume_by_type in volumes_by_type_by_aki_name.items():
-                if volume_type in volume_by_type:
-                    column_size = max(column_size, len(volume_by_type[volume_type].external_name) + 2)
-            column_size_by_type[volume_type] = column_size
-    else:
-        column_size_by_type: Dict[str, int] = {
-            volume_type: len(volume_type) + 2
-            for volume_type in aki_volume_by_type
-        }
-
-    # Format default line template
-    default_aki_column = f'{{:<{aki_name_column_size}}}'
-    column_template = default_aki_column + ''.join([f'{{:<{column_size}}}' for column_size in column_size_by_type.values()])
-    matrix_to_print.append((column_template, (['VOLUME'] + [key.upper() for key in aki_volume_by_type.keys()])))
-
-    # Compute volumes by aki name and print a line by aki name
-    for aki_name in sorted(volumes_by_type_by_aki_name.keys(), key=str.casefold):
-        volume_by_type = volumes_by_type_by_aki_name[aki_name]
-
-        # For each type set a tuple that indicate if the volume exist and is currently use
-        volume_state_by_type = {}
-
-        for volumes_type, volume_spec in aki_volume_by_type.items():
-            current_volume = current_volume_by_type[volumes_type]
-            is_used = False
-            volume = None
-
-            # Check if volume exists and check if it is currently use
-            if volumes_type in volume_by_type:
-                volume = volume_by_type[volumes_type]
-                is_used = volume == current_volume
-
-            volume_state_by_type.setdefault(volumes_type, (volume, is_used))
-
-        # Template that define column minimum size
-        column_template = []
-        columns_values = []
-        is_line_contains_used_volume = False   # If true then the aki name will be colorized too
-
-        # Compute line template for aki name and print
-        for volume_type, (volume, is_used) in volume_state_by_type.items():
-            if external_name:
-                volume_to_print = volume.external_name if volume else "-"
-            else:
-                volume_to_print = "\U00002714" if volume else "x"
-
-            # Increase template size because we write unicode characters for print the volume name in another color
-            column_size = column_size_by_type[volume_type]
-            if is_used:
-                volume_to_print = colorize_in_green(volume_to_print)
-                column_size = column_size + 9
-                is_line_contains_used_volume = True
-
-            column_template.append(f'{{:<{column_size}}}')
-            columns_values.append(volume_to_print)
-
-        # Compute if aki name is colorized
-        if is_line_contains_used_volume:
-            columns_values.insert(0, colorize_in_green(aki_name))
-            column_template.insert(0, f'{{:<{aki_name_column_size + 9}}}')
-        else:
-            columns_values.insert(0, aki_name)
-            column_template.insert(0, default_aki_column)
-
-        matrix_to_print.append((column_template, columns_values))
-    _print_matrix(matrix_to_print)
+    _print_volumes_matrix(aki_volume_by_type, volumes_by_type, external_name, current_volume_by_type)
 
 
 def copy_volume(aki_volume_by_type: Dict[str, AkiVolume], source: str, destination: str, override_volume: bool,
@@ -379,17 +393,66 @@ def copy_volume(aki_volume_by_type: Dict[str, AkiVolume], source: str, destinati
         _docker_compose_up()
 
 
-def remove_volume(aki_volume_by_type: Dict[str, AkiVolume], names: List[str]):
-    print_verbose(f'remove volumes {names}')
-    for aki_name in names:
-        for volume_type, aki_volume in aki_volume_by_type.items():
-            current_volume = _fetch_current_volume(aki_volume)
-            if aki_name == current_volume.aki_name:
-                raise ScriptError(f'Volume {aki_name} is use by container {volume_type}, '
+def remove_volumes_by_name_or_pattern(aki_volume_by_type: Dict[str, AkiVolume], names_or_regex_patterns: List[str],
+                                      is_pattern: bool, reverse_match: bool, is_force: bool):
+    volumes_to_remove_by_type: Dict[str, List[Volume]] = {
+        volume_type: [] for volume_type, _ in aki_volume_by_type.items()
+    }
+
+    # Compute volumes to remove
+    if is_pattern:
+        volumes_set_aki_name_by_type: Dict[str, Set[Volume]] = {
+            volume_type: set() for volume_type in aki_volume_by_type
+        }
+
+        # Find volume that match pattern, merge in set for unicity
+        for regex_pattern in names_or_regex_patterns:
+            for volume_type, volumes in _fetch_volumes_of_aki_volumes(aki_volume_by_type, regex_pattern, reverse_match).items():
+                if reverse_match:
+                    if len(volumes_set_aki_name_by_type[volume_type]) == 0:
+                        volumes_set_aki_name_by_type[volume_type] = set(volumes)
+                    else:
+                        volumes_set_aki_name_by_type[volume_type] = volumes_set_aki_name_by_type[volume_type] & set(volumes)
+                else:
+                    volumes_set_aki_name_by_type[volume_type] = volumes_set_aki_name_by_type[volume_type] | set(volumes)
+
+        volumes_to_remove_by_type = {
+            volume_type: list(volumes) for volume_type, volumes in volumes_set_aki_name_by_type.items()
+        }
+
+        if all(map(lambda volume_type: len(volumes_to_remove_by_type[volume_type]) == 0, volumes_to_remove_by_type.keys())):
+            print('No volume found')
+            return
+
+        # Show volumes and ask user
+        _print_volumes_matrix(aki_volume_by_type, volumes_to_remove_by_type)
+        print()
+        if not (is_force or _ask_user_with_default('Remove those volumes ?', default_yes=False)):
+            print("abort")
+            return
+    else:
+        for name in names_or_regex_patterns:
+            for volume_type, volumes in _fetch_volumes_of_aki_volumes(aki_volume_by_type, f"^{name}$").items():
+                volumes_to_remove_by_type[volume_type] = volumes_to_remove_by_type[volume_type] + volumes
+
+    remove_volumes(aki_volume_by_type, volumes_to_remove_by_type)
+
+
+def remove_volumes(aki_volume_by_type: Dict[str, AkiVolume], volumes_to_remove_by_type: Dict[str, List[Volume]]):
+    for volume_type, aki_volume in aki_volume_by_type.items():
+        current_volume = _fetch_current_volume(aki_volume)
+
+        if not current_volume:
+            continue
+
+        for volume_to_remove in volumes_to_remove_by_type[volume_type]:
+            if volume_to_remove.aki_name == current_volume.aki_name:
+                raise ScriptError(f'Volume {volume_to_remove.aki_name} is use by container {volume_type}, '
                                   f'please switch the volume before trying to remove it')
 
-        for _, aki_volume in aki_volume_by_type.items():
-            aki_volume.remove(aki_volume.volume_name_to_volume(aki_name, is_aki_name=True))
+    for volume_type, aki_volume in aki_volume_by_type.items():
+        for volume in sorted(volumes_to_remove_by_type[volume_type], key=lambda v: v.aki_name.casefold()):
+            aki_volume.remove(volume)
 
 
 def _parse_and_set_arguments():
@@ -417,7 +480,9 @@ def _parse_and_set_arguments():
     action_parser = parser.add_subparsers(dest='action', required=True, help='actions')
 
     ls_parser = action_parser.add_parser('ls', help='list existing volumes. Volume used are print in red.')
+    ls_parser.add_argument('regexp', help='filter volume short name with regex pattern', nargs='?')
     ls_parser.add_argument('--long-name', '-l', action='store_true', help='print volume name in docker or path')
+    ls_parser.add_argument('--reverse-match', '-r', action='store_true', help='reverse pattern')
 
     use_parser = action_parser.add_parser('use', help='restart containers with the volume pass in parameter')
     use_parser.add_argument('name', help='volume short name')
@@ -433,6 +498,9 @@ def _parse_and_set_arguments():
 
     remove_parser = action_parser.add_parser('rm', help='remove volume')
     remove_parser.add_argument('names', nargs='+', help='volume short names')
+    remove_parser.add_argument('--regexp', '-e', action='store_true', help='names are considered as regex pattern. Ask before remove unless --force is pass')
+    remove_parser.add_argument('--reverse-match', '-r', action='store_true', help='reverse regex pattern')
+    remove_parser.add_argument('--force', '-f', action='store_true', help='force remove without ask')
 
     version_parser = action_parser.add_parser('version', help='print aki version')
 
@@ -477,7 +545,7 @@ def main():
         print_debug_def(lambda: f'filter on volumes {", ".join(aki_volume_by_type.keys())}')
 
         if arguments.action == 'ls':
-            print_volume(aki_volume_by_type, arguments.long_name)
+            print_volumes(aki_volume_by_type, arguments.regexp, arguments.reverse_match, arguments.long_name)
         elif arguments.action == 'use':
             use_volume(aki_volume_by_type, arguments.name)
         elif arguments.action == 'cp':
@@ -490,7 +558,8 @@ def main():
             copy_volume(aki_volume_by_type, arguments.source, arguments.destination, arguments.override_existing,
                         use_copied_volume)
         elif arguments.action == 'rm':
-            remove_volume(aki_volume_by_type, arguments.names)
+            remove_volumes_by_name_or_pattern(aki_volume_by_type, arguments.names, arguments.regexp,
+                                              arguments.reverse_match, arguments.force)
     except KeyboardInterrupt:
         print_error('Killed')
         exit_code = 130

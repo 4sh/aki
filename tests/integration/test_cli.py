@@ -12,7 +12,7 @@ from docker import DockerClient
 from docker.errors import DockerException
 
 from aki import cli
-from aki._colorize import colorize_in_green
+from aki._colorize import colorize_in_green, colorize_in_red
 
 project_folder = Path(__file__).resolve().parent.parent.parent
 cli_file = project_folder / 'aki/cli.py'
@@ -88,10 +88,10 @@ def test_ls():
 
     actual = _str_out_to_matrix(out)
     expected = [
-        ['VOLUME',                  'MONGO',                    'POSTGRES'],
-        [colorize_in_green('dev'),  colorize_in_green('✔'),     colorize_in_green('✔')],
-        ['mongo_not_exist',         'x',                        '✔'],
-        ['test',                    '✔',                        '✔'],
+        ['VOLUME', 'MONGO', 'POSTGRES'],
+        [colorize_in_green('dev'), colorize_in_green('✔'), colorize_in_green('✔')],
+        ['mongo_not_exist', 'x', '✔'],
+        ['test', '✔', '✔'],
     ]
     assert expected == actual
 
@@ -102,9 +102,9 @@ def test_ls_one():
 
     actual = _str_out_to_matrix(out)
     expected = [
-        ['VOLUME',                  'MONGO'],
-        [colorize_in_green('dev'),  colorize_in_green('✔')],
-        ['test',                    '✔'],
+        ['VOLUME', 'MONGO'],
+        [colorize_in_green('dev'), colorize_in_green('✔')],
+        ['test', '✔'],
     ]
     assert expected == actual
 
@@ -115,10 +115,74 @@ def test_ls_long():
 
     actual = _str_out_to_matrix(out)
     expected = [
-        ['VOLUME',                  'MONGO',                                'POSTGRES'],
+        ['VOLUME', 'MONGO', 'POSTGRES'],
         [colorize_in_green('dev'), colorize_in_green(mongo_folder / 'dev'), colorize_in_green('aki_test_postgres_dev')],
-        ['mongo_not_exist',         '-',                                    'aki_test_postgres_mongo_not_exist'],
+        ['mongo_not_exist', '-', 'aki_test_postgres_mongo_not_exist'],
         ['test', str(mongo_folder / 'test'), 'aki_test_postgres_test'],
+    ]
+    assert expected == actual
+
+
+def test_ls_pattern():
+    exit_code, out = _run_cli('ls', 'dev')
+    _assert_process_code(exit_code)
+
+    actual = _str_out_to_matrix(out)
+    expected = [
+        ['VOLUME', 'MONGO', 'POSTGRES'],
+        [colorize_in_green('dev'), colorize_in_green('✔'), colorize_in_green('✔')],
+    ]
+    assert expected == actual
+
+
+def test_ls_pattern_2():
+    exit_code, out = _run_cli('ls', 'e')
+    _assert_process_code(exit_code)
+
+    actual = _str_out_to_matrix(out)
+    expected = [
+        ['VOLUME', 'MONGO', 'POSTGRES'],
+        [colorize_in_green('dev'), colorize_in_green('✔'), colorize_in_green('✔')],
+        ['mongo_not_exist', 'x', '✔'],
+        ['test', '✔', '✔'],
+    ]
+    assert expected == actual
+
+
+def test_ls_pattern_3():
+    exit_code, out = _run_cli('ls', '^(de|mongo)')
+    _assert_process_code(exit_code)
+
+    actual = _str_out_to_matrix(out)
+    expected = [
+        ['VOLUME', 'MONGO', 'POSTGRES'],
+        [colorize_in_green('dev'), colorize_in_green('✔'), colorize_in_green('✔')],
+        ['mongo_not_exist', 'x', '✔'],
+    ]
+    assert expected == actual
+
+
+def test_ls_pattern_reverse():
+    exit_code, out = _run_cli('ls', '-r', 'dev')
+    _assert_process_code(exit_code)
+
+    actual = _str_out_to_matrix(out)
+    expected = [
+        ['VOLUME', 'MONGO', 'POSTGRES'],
+        ['mongo_not_exist', 'x', '✔'],
+        ['test', '✔', '✔'],
+    ]
+    assert expected == actual
+
+
+def test_ls_long_pattern():
+    exit_code, out = _run_cli('ls', '-l', 'dev')
+    _assert_process_code(exit_code)
+
+    actual = _str_out_to_matrix(out)
+    expected = [
+        ['VOLUME', 'MONGO', 'POSTGRES'],
+        [colorize_in_green('dev'), colorize_in_green(mongo_folder / 'dev'), colorize_in_green('aki_test_postgres_dev')],
     ]
     assert expected == actual
 
@@ -166,7 +230,8 @@ def test_cp():
                                  Copying volume aki_test_postgres_test to aki_test_postgres_test_cp
                                  \x1b[32mCopy done\x1b[0m
                                     
-                                 Switch to volume test_cp ? [Y/n] Use volume test_cp
+                                 Switch to volume test_cp ? [Y/n]
+                                 Use volume test_cp
                                  Writing {env_file}
                                  Removing container aki_test_mongo
                                  Removing container aki_test_postgres
@@ -186,7 +251,8 @@ def test_cp_one():
                                      Copying {mongo_folder}/test to {mongo_folder}/test_cp
                                      \x1b[32mCopy done\x1b[0m
                                         
-                                     Switch to volume test_cp ? [Y/n] Use volume test_cp
+                                     Switch to volume test_cp ? [Y/n]
+                                     Use volume test_cp
                                      Writing {env_file}
                                      Removing container aki_test_mongo
                                      Restarting containers
@@ -209,7 +275,8 @@ def test_cp_no_switch():
                                  Copying volume aki_test_postgres_test to aki_test_postgres_test_cp
                                  \x1b[32mCopy done\x1b[0m
                                     
-                                 Switch to volume test_cp ? [Y/n] Restarting containers''')
+                                 Switch to volume test_cp ? [Y/n]
+                                 Restarting containers''')
 
     assert mongo_prefix / 'dev' == _get_mongo_current_volume_path()
     assert f'{postgres_prefix}dev' == _get_postgres_current_volume_name()
@@ -222,18 +289,21 @@ def test_cp_override():
 
     _assert_process_out(out, f'''
                                  Stopping aki_test_mongo
-                                 Volume dev for mongo already exist, override it ? [Y/n] Remove volume dev
+                                 Volume dev for mongo already exist, override it ? [Y/n]
+                                 Remove volume dev
                                  Removing {mongo_folder}/dev
                                  Copying {mongo_folder}/test to {mongo_folder}/dev
                                  \x1b[32mCopy done\x1b[0m
                                  
                                  Stopping aki_test_postgres
-                                 Volume dev for postgres already exist, override it ? [Y/n] Remove volume dev
+                                 Volume dev for postgres already exist, override it ? [Y/n]
+                                 Remove volume dev
                                  Removing aki_test_postgres_dev
                                  Copying volume aki_test_postgres_test to aki_test_postgres_dev
                                  \x1b[32mCopy done\x1b[0m
                                  
-                                 Switch to volume dev ? [Y/n] Use volume dev
+                                 Switch to volume dev ? [Y/n]
+                                 Use volume dev
                                  Writing {env_file}
                                  Removing container aki_test_mongo
                                  Removing container aki_test_postgres
@@ -245,24 +315,16 @@ def test_cp_override():
 
 
 def test_cp_no_override():
-    stdin = StringIO('y\ny\ny\n')
+    stdin = StringIO('n\nn\ny\n')
     exit_code, out = _run_cli('cp', 'test', 'dev', stdin=stdin)
     _assert_process_code(exit_code)
-
     _assert_process_out(out, f'''
                                  Stopping aki_test_mongo
-                                 Volume dev for mongo already exist, override it ? [Y/n] Remove volume dev
-                                 Removing {mongo_folder}/dev
-                                 Copying {mongo_folder}/test to {mongo_folder}/dev
-                                 \x1b[32mCopy done\x1b[0m
-                                 
+                                 Volume dev for mongo already exist, override it ? [Y/n]
                                  Stopping aki_test_postgres
-                                 Volume dev for postgres already exist, override it ? [Y/n] Remove volume dev
-                                 Removing aki_test_postgres_dev
-                                 Copying volume aki_test_postgres_test to aki_test_postgres_dev
-                                 \x1b[32mCopy done\x1b[0m
-                                 
-                                 Switch to volume dev ? [Y/n] Use volume dev
+                                 Volume dev for postgres already exist, override it ? [Y/n]
+                                 Switch to volume dev ? [Y/n]
+                                 Use volume dev
                                  Writing {env_file}
                                  Removing container aki_test_mongo
                                  Removing container aki_test_postgres
@@ -288,6 +350,41 @@ def test_rm():
         assert f'{postgres_prefix}test' != volume.name
 
 
+def test_rm_used():
+    exit_code, out = _run_cli('rm', 'dev')
+    _assert_process_code(exit_code, code=1)
+
+    _assert_process_out(out, colorize_in_red(
+        'Volume dev is use by container mongo, please switch the volume before trying to remove it'))
+
+    assert (mongo_folder / 'dev').exists()
+
+    volumes_list = docker_client.volumes.list()
+    found_volume = False
+    for volume in volumes_list:
+        if f'{postgres_prefix}test' == volume.name:
+            found_volume = True
+
+    assert found_volume
+
+
+def test_rm_multiple():
+    exit_code, out = _run_cli('rm', 'test', 'mongo_not_exist')
+    _assert_process_code(exit_code)
+
+    _assert_process_out(out, f'''
+                                 Removing {mongo_folder}/test
+                                 Removing {postgres_prefix}mongo_not_exist
+                                 Removing {postgres_prefix}test''')
+
+    assert not (mongo_folder / 'test').exists()
+
+    volumes_list = docker_client.volumes.list()
+    for volume in volumes_list:
+        assert f'{postgres_prefix}test' != volume.name
+        assert f'{postgres_prefix}mongo_not_exist' != volume.name
+
+
 def test_rm_one():
     exit_code, out = _run_cli('--volume', 'mongo', 'rm', 'test')
     _assert_process_code(exit_code)
@@ -297,7 +394,113 @@ def test_rm_one():
     assert not (mongo_folder / 'test').exists()
 
 
-def _run_cli(*args, stdin: StringIO = StringIO()) -> Tuple[int or None, str]:
+def test_rm_pattern():
+    exit_code, out = _run_cli('rm', '-e', '^(te|mongo)', stdin=StringIO('y'))
+    _assert_process_code(exit_code)
+
+    _assert_process_out(out, f'''
+                             VOLUME           MONGO  POSTGRES  
+                             mongo_not_exist  x      ✔         
+                             test             ✔      ✔         
+                            
+                             Remove those volumes ? [y/N]
+                             Removing {mongo_folder}/test
+                             Removing aki_test_postgres_mongo_not_exist
+                             Removing aki_test_postgres_test''')
+
+    assert not (mongo_folder / 'test').exists()
+
+    volumes_list = docker_client.volumes.list()
+    for volume in volumes_list:
+        assert f'{postgres_prefix}test' != volume.name
+        assert f'{postgres_prefix}mongo_not_exist' != volume.name
+
+
+def test_rm_pattern_multiple():
+    exit_code, out = _run_cli('rm', '-e', '^te', '^mongo', stdin=StringIO('y'))
+    _assert_process_code(exit_code)
+
+    _assert_process_out(out, f'''
+                             VOLUME           MONGO  POSTGRES  
+                             mongo_not_exist  x      ✔         
+                             test             ✔      ✔         
+                            
+                             Remove those volumes ? [y/N]
+                             Removing {mongo_folder}/test
+                             Removing aki_test_postgres_mongo_not_exist
+                             Removing aki_test_postgres_test''')
+
+    assert not (mongo_folder / 'test').exists()
+
+    volumes_list = docker_client.volumes.list()
+    for volume in volumes_list:
+        assert f'{postgres_prefix}test' != volume.name
+        assert f'{postgres_prefix}mongo_not_exist' != volume.name
+
+
+def test_rm_pattern_reverse():
+    exit_code, out = _run_cli('rm', '-er', '^dev$', stdin=StringIO('y'))
+    _assert_process_code(exit_code)
+
+    _assert_process_out(out, f'''
+                             VOLUME           MONGO  POSTGRES  
+                             mongo_not_exist  x      ✔         
+                             test             ✔      ✔         
+                            
+                             Remove those volumes ? [y/N]
+                             Removing {mongo_folder}/test
+                             Removing aki_test_postgres_mongo_not_exist
+                             Removing aki_test_postgres_test''')
+
+    assert not (mongo_folder / 'test').exists()
+
+    volumes_list = docker_client.volumes.list()
+    for volume in volumes_list:
+        assert f'{postgres_prefix}test' != volume.name
+        assert f'{postgres_prefix}mongo_not_exist' != volume.name
+
+
+def test_rm_pattern_reverse_multiple():
+    exit_code, out = _run_cli('rm', '-er', '^dev$', '^test$', stdin=StringIO('y'))
+    _assert_process_code(exit_code)
+
+    _assert_process_out(out, f'''
+                             VOLUME           MONGO  POSTGRES  
+                             mongo_not_exist  x      ✔         
+                            
+                             Remove those volumes ? [y/N]
+                             Removing aki_test_postgres_mongo_not_exist''')
+
+    volumes_list = docker_client.volumes.list()
+    for volume in volumes_list:
+        assert f'{postgres_prefix}mongo_not_exist' != volume.name
+
+
+def test_rm_pattern_no_match():
+    exit_code, out = _run_cli('rm', '-e', '^no_match', stdin=StringIO('y'))
+    _assert_process_code(exit_code)
+
+    _assert_process_out(out, f'''
+                             No volume found''')
+
+    assert (mongo_folder / 'dev').exists()
+    assert (mongo_folder / 'test').exists()
+
+    volumes_list = docker_client.volumes.list()
+    found_dev = False
+    found_test = False
+    found_mongo_not_exist = False
+    for volume in volumes_list:
+        found_dev = found_dev or f'{postgres_prefix}dev' != volume.name
+        found_test = found_test or f'{postgres_prefix}test' != volume.name
+        found_mongo_not_exist = found_mongo_not_exist or f'{postgres_prefix}mongo_not_exist' != volume.name
+
+    assert found_dev
+    assert found_test
+    assert found_mongo_not_exist
+
+
+def _run_cli(*args, stdin: StringIO = StringIO()) -> Tuple[Union[int | None], str]:
     """
     Execute cli main and return printed lines as str
     :param args: cli main args
@@ -345,7 +548,7 @@ def _run_cmd(*args, **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs)
 
 
-def _check_process(process: subprocess.CompletedProcess) -> subprocess.CompletedProcess:
+def _check_process(process: subprocess.CompletedProcess):
     if process.returncode != 0:
         raise ValueError(f'{process.args=} {process.returncode=} out={process.stdout.decode()}')
 
@@ -355,7 +558,7 @@ def _assert_process_code(exit_code: int or None, code: int = 0):
 
 
 def _assert_process_out(out: str or None, expected: str):
-    assert out.strip() == dedent(expected).strip()
+    assert out.strip().replace('[Y/n] ', '[Y/n]\n').replace('[y/N] ', '[y/N]\n') == dedent(expected).strip()
 
 
 def _str_out_to_matrix(out) -> List[List[str]]:
