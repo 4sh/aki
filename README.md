@@ -78,6 +78,11 @@ In green aki show volume actually used by the container. Aki use two symbols:
 * ✔ mean the volume exist
 * x mean the volume does not exist
 
+You can pass a parameter for filter volumes with a regex, `--reverse-match/-r` reverse the pattern :
+
+![](docs/images/aki_ls_pattern.png)
+
+
 You can print docker volume name or path with `--long-name/-l` option:
 
 ![](docs/images/aki_ls_long.png)
@@ -101,6 +106,11 @@ cp can take 3 arguments:
 Remove one or more volumes:
 
 ![](docs/images/aki_rm.png)
+
+`--regexp/-e` allow to pass regex patten as volume name, `--reverse-match/-r` reverse it.
+If `--regexp/-e` is used, aki print out the volumes to be deleted and requests confirmation :
+
+![](docs/images/aki_rm_pattern.png)
 
 Of course current volume cannot be removed.
 
