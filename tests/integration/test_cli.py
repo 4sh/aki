@@ -64,14 +64,23 @@ def remove_docker_env():
         env_file.unlink()
         env_file.touch()
 
-    def rm_volume_if_exists(volume: str):
+    # Remove docker volume
+    for volume in postgres_volumes + extra_to_remove:
         try:
-            docker_client.volumes.get(volume).remove()
-        except DockerException as e:
+            docker_client.volumes.get(f'aki_test_postgres_{volume}').remove()
+        except DockerException:
             pass
 
-    [rm_volume_if_exists(f'aki_test_postgres_{volume}') for volume in postgres_volumes + extra_to_remove]
-    [shutil.rmtree((mongo_folder / volume)) for volume in mongo_volumes + extra_to_remove if (mongo_folder / volume).exists()]
+    # Remove folder volume
+    docker_client.containers.run(
+        image='busybox',
+        command=f'rm -rf /volumes/{" ".join(mongo_volumes + extra_to_remove)}',
+        working_dir='/volumes',
+        volumes=[
+            f'{mongo_folder}:/volumes',
+        ],
+        remove=True
+    )
 
 
 def test_bad_args():

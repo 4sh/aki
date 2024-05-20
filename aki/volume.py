@@ -236,6 +236,20 @@ class AkiHostVolume(AkiVolume):
     def remove(self, volume: Volume):
         try:
             print_info(f'Removing {volume.external_name}')
-            shutil.rmtree(volume.external_name)
+
+            # Remove via shell, work on macOS and aki inside docker container (macOS and Linux).
+            # aki on linux will trigger a PermissionError as files written by a container does not belong to user
+            try:
+                shutil.rmtree(volume.external_name)
+
+            except PermissionError:
+                # If a PermissionError is trigger then try to remove all files inside the docker container and retry
+                self.docker_client.containers.run('busybox',
+                                                  command='sh -c "rm -rf -- ..?* .[!.]* *"',
+                                                  working_dir='/volume',
+                                                  name=format_aki_container_name(f'rm_{self.container_name}'),
+                                                  volumes=[f'{volume.external_name}:/volume'],
+                                                  remove=True)
+                shutil.rmtree(volume.external_name)
         except FileNotFoundError:
             pass
