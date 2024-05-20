@@ -3,6 +3,7 @@
 **/__pycache__
 
 sample/mongo/*
+!sample/mongo/.gitkeep
 sample/.env
 
 .tox
