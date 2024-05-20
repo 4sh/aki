@@ -243,12 +243,40 @@ A special variable `_current` allow you to copy your current volume:
   source: _current
 ```
 
+By default, copy will affect all volume types (mongo and postgres in the sample).
+You can specify volume types with the types property, which is useful if you want to copy volume types from
+different sources. This example copy the mongo volume from current one, but the postgres volume is copy from dev:
+```yaml
+- action: copy
+  source: _current
+  types:
+    - mongo
+- action: copy
+  source: dev
+  types:
+    - postgres
+```
+
 ##### use
 use take the volume attribute, it's the volume name to switch:
 ```yaml
 - action: use
-  volume: dev
+  volume_name: dev
 ```
+
+By default, like copy, use will affect all volume types (mongo and postgres in the sample).
+You can specify volume types with the types property :
+```yaml
+- action: use
+  volume_name: dev
+  types:
+    - mongo
+- action: copy
+  volume_name: test
+  types:
+    - postgres
+```
+
 
 ##### remove
 remove take an array of volumes to delete:
@@ -257,6 +285,22 @@ remove take an array of volumes to delete:
   volume_names:
     - dev
     - foo
+```
+By default, like copy, use will affect all volume types (mongo and postgres in the sample).
+You can specify volume types with the types property :
+```yaml
+- action: rm
+  volume_names:
+    - dev
+    - foo
+  types:
+    - mongo
+- action: copy
+  volume_names:
+    - test
+    - foo
+  types:
+    - postgres
 ```
 
 ##### error
