@@ -334,7 +334,7 @@ E.g:
 
 This will execute `not_found` fn:
 ```python
-def not_found(volume_name: str, volumes_by_types: Dict, volumes_used: Dict) -> Dict:
+def not_found(volume_name: str, volumes_by_types: Dict, volumes_used: Dict) -> Union[Dict | List[Dict]]:
     if 'dev' in volume_name:
         return {'action': 'copy', 'source': 'dev', 'destination': volume_name}
     else:
@@ -411,4 +411,16 @@ A git `post-checkout` file for command aki to use current branch as a volume.
 You just need to tell git to use `.git-hooks` folder :
 ```
 git config core.hooksPath .git-hooks
+```
+
+### How to use
+To start the sample with aki we need to create a .env file and start docker compose (for create default volume) :
+```
+touch .env
+docker compose up -d
+```
+
+Then copy db volume to dev :
+```
+aki cp db dev
 ```
