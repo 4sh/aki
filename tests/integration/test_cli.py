@@ -4,7 +4,7 @@ import sys
 from io import StringIO
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import docker
 import pytest
@@ -509,7 +509,7 @@ def test_rm_pattern_no_match():
     assert found_mongo_not_exist
 
 
-def _run_cli(*args, stdin: StringIO = StringIO()) -> Tuple[Union[int | None], str]:
+def _run_cli(*args, stdin: StringIO = StringIO()) -> Tuple[Union[int, None], str]:
     """
     Execute cli main and return printed lines as str
     :param args: cli main args

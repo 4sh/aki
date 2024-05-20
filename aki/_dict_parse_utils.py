@@ -25,7 +25,7 @@ def get_str(key: ConfigKey, dictionary: Dict, mandatory=True):
     return value_str
 
 
-def get_dict(key: ConfigKey, dictionary: Dict, mandatory=True) -> dict:
+def get_dict(key: ConfigKey, dictionary: Dict, mandatory=True) -> Dict:
     value_dict = get_value(key, dictionary, mandatory)
 
     if not mandatory and value_dict is None:
@@ -37,7 +37,7 @@ def get_dict(key: ConfigKey, dictionary: Dict, mandatory=True) -> dict:
     return value_dict
 
 
-def get_list(key: ConfigKey, dictionary: Dict, mandatory=True) -> list:
+def get_list(key: ConfigKey, dictionary: Dict, mandatory=True) -> List:
     value_list = get_value(key, dictionary, mandatory)
 
     if not mandatory and value_list is None:
@@ -92,7 +92,7 @@ def get_deep_list(compose_key: str, dictionary: Dict, prefix: str = '', mandator
     return value_list
 
 
-def get_deep_dict(compose_key: str, dictionary: Dict, prefix: str = '', mandatory=True) -> dict:
+def get_deep_dict(compose_key: str, dictionary: Dict, prefix: str = '', mandatory=True) -> Dict:
     value_dict = get_deep_value(compose_key, dictionary, prefix, mandatory)
 
     if not mandatory and value_dict is None:

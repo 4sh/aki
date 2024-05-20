@@ -1,7 +1,7 @@
 import abc
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 from aki.config_key import ConfigKey
 from aki.error import ScriptError
@@ -109,7 +109,7 @@ class PyCodeAction(Action):
     function: str
     _function_args: Tuple
 
-    def execute(self) -> [List[Action], None]:
+    def execute(self) -> Union[List[Action], None]:
         # Import the file as a module
         import importlib.util
         import sys
@@ -159,7 +159,7 @@ class PyCodeAction(Action):
         return actions
 
     @staticmethod
-    def from_dict(dictionary: Dict, *args, prefix: str = '', base_path: Path | None = None):
+    def from_dict(dictionary: Dict, *args, prefix: str = '', base_path: Union[Path, None] = None):
         file = dict_parse_utils.get_path(base_path, ConfigKey(PyCodeAction.KEY_FILE, prefix), dictionary)
         if not file.exists():
             raise ScriptError(f'Action py : Path {file} does not exist')

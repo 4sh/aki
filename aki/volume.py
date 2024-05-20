@@ -3,7 +3,7 @@ import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Iterator
+from typing import List, Iterator, Union
 
 import docker.errors
 from docker import DockerClient
@@ -48,7 +48,7 @@ class AkiVolume(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def fetch_current_volume(self) -> Volume or None:
+    def fetch_current_volume(self) -> Union[Volume, None]:
         """
         Fetch volume name use by container name
         """
@@ -116,7 +116,7 @@ class AkiDockerVolume(AkiVolume):
 
             yield volume
 
-    def fetch_current_volume(self) -> Volume or None:
+    def fetch_current_volume(self) -> Union[Volume, None]:
         try:
             print_verbose(f'{self.container_name} - fetch container')
             container = self.docker_client.containers.get(self.container_name)
@@ -189,7 +189,7 @@ class AkiHostVolume(AkiVolume):
 
             yield volume
 
-    def fetch_current_volume(self) -> Volume or None:
+    def fetch_current_volume(self) -> Union[Volume, None]:
         parent_folder = str(self.parent_folder)
         exclude_str_path = [str(self.parent_folder / exclude_name) for exclude_name in self.exclude_names]
 

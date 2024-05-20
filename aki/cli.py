@@ -7,7 +7,7 @@ import traceback
 from functools import reduce
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Union
 
 from docker.errors import DockerException
 from dotenv import dotenv_values
@@ -44,7 +44,7 @@ def _fetch_volumes_of_aki_volumes(aki_volume_by_type: Dict[str, AkiVolume], rege
     return volumes_by_aki_volume_type
 
 
-def _fetch_current_volume(aki_volume: AkiVolume) -> Volume or None:
+def _fetch_current_volume(aki_volume: AkiVolume) -> Union[Volume, None]:
     """
     Fetch volume from volume spec impl. If none try to determine current volume by reading docker compose env file
     """
