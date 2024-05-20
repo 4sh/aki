@@ -16,12 +16,12 @@ aki:
         - share
   use:
     not_found:
-      - regex: dev-.*
+      - volume_name: dev-.*
         actions:
         - action: copy
           source: dev
       - actions:
         - action: use
-          volume: dev
+          volume_name: dev
         - action: error
           message: Volume not found, use volume 'dev' instead

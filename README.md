@@ -346,11 +346,11 @@ def not_found(volume_name: str, volumes_by_types: Dict, volumes_used: Dict) -> D
 aki:
   use:
     not_found:
-      - regex: ^dev-.+
+      - volume_name: ^dev-.+
         actions:
           - action: copy
             source: dev
-      - regex: ^pr-.+
+      - volume_name: ^pr-.+
         actions:
           - action: copy
             source: _current
