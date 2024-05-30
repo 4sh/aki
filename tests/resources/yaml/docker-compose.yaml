@@ -9,6 +9,9 @@ services:
   postgres:
     image: postgres
     container_name: aki_test_postgres
+    stop_grace_period: 0s
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - postgres_volume:/var/lib/postgresql/data
       - ./postgres/test:/tmp/test
