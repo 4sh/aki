@@ -126,7 +126,7 @@ class AkiDockerVolume(AkiVolume):
 
             for docker_volumes in container_volumes:
                 volume_name = docker_volumes.get('Name')
-                if self.prefix_name in volume_name:
+                if volume_name and self.prefix_name in volume_name:
                     current_volume = self.volume_name_to_volume(volume_name)
                     print_verbose(f'{self.container_name} - {current_volume=}')
                     return current_volume
