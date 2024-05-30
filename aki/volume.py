@@ -124,7 +124,7 @@ class AkiDockerVolume(AkiVolume):
 
             container_volumes = container.attrs.get('Mounts')
 
-            for docker_volumes in container_volumes:
+            for docker_volumes in filter(lambda v: v.get('Type') == 'volume', container_volumes):
                 volume_name = docker_volumes.get('Name')
                 if volume_name and self.prefix_name in volume_name:
                     current_volume = self.volume_name_to_volume(volume_name)
@@ -199,7 +199,7 @@ class AkiHostVolume(AkiVolume):
             print_verbose(f'{self.container_name} - fetch container ok')
             volumes = container.attrs.get('Mounts')
 
-            for volume in volumes:
+            for volume in filter(lambda v: v.get('Type') == 'bind', volumes):
                 volume_path = volume.get('Source')
 
                 if parent_folder in volume_path and volume_path not in exclude_str_path:

@@ -1,4 +1,3 @@
-import shutil
 import subprocess
 import sys
 from io import StringIO
@@ -584,9 +583,12 @@ def _get_postgres_current_volume_name():
     container = docker_client.containers.get(postgres_container_id)
     container_volumes = container.attrs.get('Mounts')
 
-    for docker_volumes in container_volumes:
+    for docker_volumes in filter(lambda v: v.get('Type') == 'volume', container_volumes):
+        if docker_volumes.get('Type') != 'volume':
+            continue
+
         volume_name = docker_volumes.get('Name')
-        if postgres_prefix in volume_name:
+        if volume_name and postgres_prefix in volume_name:
             return volume_name
 
 
@@ -594,7 +596,10 @@ def _get_mongo_current_volume_path():
     container = docker_client.containers.get(mongo_container_id)
     volumes = container.attrs.get('Mounts')
 
-    for volume in volumes:
+    for volume in filter(lambda v: v.get('Type') == 'bind', volumes):
+        if volume.get('Type') != 'bind':
+            continue
+
         source = volume.get('Source')
         if str(mongo_prefix) in source:
             return Path(source)

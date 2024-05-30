@@ -5,13 +5,18 @@ services:
     image: mongo
     volumes:
       - ./mongo/${AKI_TEST_MONGO_VOLUME_NAME:-db}:/data/db
+      - aki_mongo_volume:/tmp/test
   postgres:
     image: postgres
     container_name: aki_test_postgres
     volumes:
       - postgres_volume:/var/lib/postgresql/data
+      - ./postgres/test:/tmp/test
 
 volumes:
   postgres_volume:
     name:  aki_test_postgres_${AKI_TEST_POSTGRES_VOLUME_NAME:-db}
+    driver: local
+  aki_mongo_volume:
+    name: aki_mongo_volume
     driver: local
