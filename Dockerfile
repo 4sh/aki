@@ -29,6 +29,7 @@ RUN rm pyproject.toml poetry.lock
 
 
 FROM python:3.12-alpine as production
+ENV PYTHONUNBUFFERED=1
 
 # Install aki dependencies
 RUN apk add --no-cache docker-cli-compose
